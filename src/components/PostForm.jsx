@@ -1,14 +1,4 @@
-import React from "react";
-
-function PostForm({
-  title,
-  setTitle,
-  writer,
-  setWriter,
-  content,
-  setContent,
-  onSubmit,
-}) {
+function PostForm({ title, setTitle, content, setContent, onSubmit }) {
   return (
     <form
       onSubmit={onSubmit}
@@ -27,15 +17,6 @@ function PostForm({
           placeholder="제목을 입력하세요"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          style={{ width: "100%", padding: "8px", boxSizing: "border-box" }}
-        />
-      </div>
-      <div style={{ marginBottom: "10px" }}>
-        <input
-          type="text"
-          placeholder="작성자"
-          value={writer}
-          onChange={(e) => setWriter(e.target.value)}
           style={{ width: "100%", padding: "8px", boxSizing: "border-box" }}
         />
       </div>

@@ -1,15 +1,26 @@
 import { useState, useEffect } from "react";
 import { checkResponse } from "../api";
 
-function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
+const btn = (bg, color = "#fff") => ({
+  marginRight: "10px",
+  padding: "8px 12px",
+  backgroundColor: bg,
+  color,
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+});
+
+function PostDetail({ selectedPost, member, onBack, onDelete, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(selectedPost.title);
   const [editContent, setEditContent] = useState(selectedPost.content);
 
-  // 댓글 관련 상태
   const [comments, setComments] = useState([]);
-  const [commentWriter, setCommentWriter] = useState("");
   const [commentContent, setCommentContent] = useState("");
+
+  // ★ 내가 쓴 글인지 (화면 표시용. 실제 권한 검사는 서버가 한다)
+  const isMyPost = member && member.id === selectedPost.memberId;
 
   const fetchComments = (postId) => {
     fetch(`http://localhost:8080/api/posts/${postId}/comments`)
@@ -20,24 +31,24 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
   };
 
   useEffect(() => {
-  fetchComments(selectedPost.id);
+    fetchComments(selectedPost.id);
   }, [selectedPost.id]);
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
-    if (!commentWriter.trim() || !commentContent.trim()) {
-      alert("작성자와 댓글 내용을 입력해주세요!");
+    if (!commentContent.trim()) {
+      alert("댓글 내용을 입력해주세요!");
       return;
     }
 
     fetch(`http://localhost:8080/api/posts/${selectedPost.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ author: commentWriter, content: commentContent }),
+      credentials: "include", // ★
+      body: JSON.stringify({ content: commentContent }), // ★ author 삭제
     })
       .then(checkResponse)
       .then(() => {
-        setCommentWriter("");
         setCommentContent("");
         fetchComments(selectedPost.id);
       })
@@ -48,10 +59,11 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
     if (window.confirm("댓글을 삭제하시겠습니까?")) {
       fetch(`http://localhost:8080/api/comments/${commentId}`, {
         method: "DELETE",
+        credentials: "include", // ★
       })
         .then(checkResponse)
         .then(() => fetchComments(selectedPost.id))
-        .catch((err) => alert(err.message)); 
+        .catch((err) => alert(err.message));
     }
   };
 
@@ -86,7 +98,7 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
       </div>
 
       <p>
-        <strong>작성자:</strong> {selectedPost.author || selectedPost.writer}
+        <strong>작성자:</strong> {selectedPost.author}
       </p>
       <p>
         <strong>작성일:</strong>{" "}
@@ -125,15 +137,7 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
               onUpdate(selectedPost.id, editTitle, editContent);
               setIsEditing(false);
             }}
-            style={{
-              marginRight: "10px",
-              padding: "8px 12px",
-              backgroundColor: "#28a745",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            style={btn("#28a745")}
           >
             수정 완료
           </button>
@@ -143,59 +147,25 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
               setEditContent(selectedPost.content);
               setIsEditing(false);
             }}
-            style={{
-              marginRight: "10px",
-              padding: "8px 12px",
-              backgroundColor: "#6c757d",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            style={btn("#6c757d")}
           >
             취소
           </button>
         </>
       ) : (
         <>
-          <button
-            onClick={() => setIsEditing(true)}
-            style={{
-              marginRight: "10px",
-              padding: "8px 12px",
-              backgroundColor: "#ffc107",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            수정하기
-          </button>
-          <button
-            onClick={() => onDelete(selectedPost.id)}
-            style={{
-              marginRight: "10px",
-              padding: "8px 12px",
-              backgroundColor: "#dc3545",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            삭제하기
-          </button>
-          <button
-            onClick={onBack}
-            style={{
-              padding: "8px 12px",
-              backgroundColor: "#6c757d",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          {/* ★ 내 글일 때만 수정/삭제 버튼 표시 */}
+          {isMyPost && (
+            <>
+              <button onClick={() => setIsEditing(true)} style={btn("#ffc107", "#000")}>
+                수정하기
+              </button>
+              <button onClick={() => onDelete(selectedPost.id)} style={btn("#dc3545")}>
+                삭제하기
+              </button>
+            </>
+          )}
+          <button onClick={onBack} style={btn("#6c757d")}>
             목록으로
           </button>
         </>
@@ -205,40 +175,30 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
       <hr style={{ margin: "20px 0" }} />
       <h4>💬 댓글</h4>
 
-      {/* 댓글 작성 폼 */}
-      <form onSubmit={handleCommentSubmit} style={{ marginBottom: "15px" }}>
-        <div style={{ marginBottom: "8px" }}>
-          <input
-            type="text"
-            placeholder="작성자"
-            value={commentWriter}
-            onChange={(e) => setCommentWriter(e.target.value)}
-            style={{ padding: "6px", width: "150px", marginRight: "10px" }}
-          />
-        </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <input
-            type="text"
-            placeholder="댓글을 입력하세요"
-            value={commentContent}
-            onChange={(e) => setCommentContent(e.target.value)}
-            style={{ padding: "6px", flex: "1" }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "6px 12px",
-              backgroundColor: "#007bff",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            댓글 등록
-          </button>
-        </div>
-      </form>
+      {/* ★ 로그인했을 때만 댓글 작성 폼 표시 */}
+      {member ? (
+        <form onSubmit={handleCommentSubmit} style={{ marginBottom: "15px" }}>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input
+              type="text"
+              placeholder={`${member.nickname}(으)로 댓글 작성`}
+              value={commentContent}
+              onChange={(e) => setCommentContent(e.target.value)}
+              style={{ padding: "6px", flex: "1" }}
+            />
+            <button
+              type="submit"
+              style={{ ...btn("#007bff"), marginRight: 0, padding: "6px 12px" }}
+            >
+              댓글 등록
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p style={{ color: "#666", fontSize: "14px" }}>
+          댓글을 작성하려면 로그인해주세요.
+        </p>
+      )}
 
       {/* 댓글 목록 */}
       <div>
@@ -257,31 +217,27 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
               <div style={{ display: "flex", alignItems: "center" }}>
                 <strong>{comment.author}</strong>
                 <span
-                  style={{
-                    fontSize: "12px",
-                    color: "#666",
-                    marginLeft: "10px",
-                  }}
+                  style={{ fontSize: "12px", color: "#666", marginLeft: "10px" }}
                 >
                   {comment.createdAt
                     ? comment.createdAt.replace("T", " ").substring(0, 19)
                     : ""}
                 </span>
-                <button
-                  onClick={() => handleCommentDelete(comment.id)}
-                  style={{
-                    marginLeft: "auto",
-                    padding: "2px 6px",
-                    backgroundColor: "#dc3545",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "3px",
-                    fontSize: "11px",
-                    cursor: "pointer",
-                  }}
-                >
-                  삭제
-                </button>
+                {/* ★ 내 댓글일 때만 삭제 버튼 표시 */}
+                {member && member.id === comment.memberId && (
+                  <button
+                    onClick={() => handleCommentDelete(comment.id)}
+                    style={{
+                      ...btn("#dc3545"),
+                      marginLeft: "auto",
+                      marginRight: 0,
+                      padding: "2px 6px",
+                      fontSize: "11px",
+                    }}
+                  >
+                    삭제
+                  </button>
+                )}
               </div>
               <p style={{ margin: "5px 0 0 0", whiteSpace: "pre-wrap" }}>
                 {comment.content}
