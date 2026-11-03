@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { checkResponse } from "../api";
 
 function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -12,18 +13,19 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
 
   const fetchComments = (postId) => {
     fetch(`http://localhost:8080/api/posts/${postId}/comments`)
+      .then(checkResponse)
       .then((res) => res.json())
       .then((data) => setComments(data))
       .catch((err) => console.error("댓글 조회 실패:", err));
   };
 
   useEffect(() => {
-    fetchComments(selectedPost.id);
+  fetchComments(selectedPost.id);
   }, [selectedPost.id]);
 
   const handleCommentSubmit = (e) => {
     e.preventDefault();
-    if (!commentWriter || !commentContent) {
+    if (!commentWriter.trim() || !commentContent.trim()) {
       alert("작성자와 댓글 내용을 입력해주세요!");
       return;
     }
@@ -33,12 +35,13 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ author: commentWriter, content: commentContent }),
     })
+      .then(checkResponse)
       .then(() => {
         setCommentWriter("");
         setCommentContent("");
         fetchComments(selectedPost.id);
       })
-      .catch((err) => console.error("댓글 작성 실패:", err));
+      .catch((err) => alert(err.message));
   };
 
   const handleCommentDelete = (commentId) => {
@@ -46,8 +49,9 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
       fetch(`http://localhost:8080/api/comments/${commentId}`, {
         method: "DELETE",
       })
+        .then(checkResponse)
         .then(() => fetchComments(selectedPost.id))
-        .catch((err) => console.error("댓글 삭제 실패:", err));
+        .catch((err) => alert(err.message)); 
     }
   };
 
@@ -90,6 +94,9 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
           ? selectedPost.createdAt.replace("T", " ").substring(0, 19)
           : ""}
       </p>
+      <p>
+        <strong>조회수:</strong> {selectedPost.views}
+      </p>
       <hr />
 
       <div style={{ marginBottom: "15px", whiteSpace: "pre-wrap" }}>
@@ -131,7 +138,11 @@ function PostDetail({ selectedPost, onBack, onDelete, onUpdate }) {
             수정 완료
           </button>
           <button
-            onClick={() => setIsEditing(false)}
+            onClick={() => {
+              setEditTitle(selectedPost.title);
+              setEditContent(selectedPost.content);
+              setIsEditing(false);
+            }}
             style={{
               marginRight: "10px",
               padding: "8px 12px",

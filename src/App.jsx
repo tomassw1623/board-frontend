@@ -3,6 +3,7 @@ import "./App.css";
 import PostForm from "./components/PostForm";
 import PostList from "./components/PostList";
 import PostDetail from "./components/PostDetail";
+import { checkResponse } from "./api";                          // ★ 추가
 
 function App() {
   const [posts, setPosts] = useState([]);
@@ -20,9 +21,9 @@ function App() {
     fetch(
       `http://localhost:8080/api/posts?page=${page}&keyword=${encodeURIComponent(searchKeyword)}`,
     )
+      .then(checkResponse)                                      // ★ 추가
       .then((response) => response.json())
       .then((data) => {
-        // 백엔드가 보내준 Map 객체에서 posts와 totalPages를 꺼내어 상태에 저장
         setPosts(data.posts || []);
         setTotalPages(data.totalPages || 1);
         setCurrentPage(data.currentPage || 1);
@@ -37,16 +38,20 @@ function App() {
   // 상세 조회
   const handleRowClick = (id) => {
     fetch(`http://localhost:8080/api/posts/${id}`)
+      .then(checkResponse)                                      // ★ 추가
       .then((response) => response.json())
       .then((data) => setSelectedPost(data))
-      .catch((error) => console.error("상세 조회 실패:", error));
+      .catch((error) => {                                       // ★ 교체
+        alert(error.message);
+        fetchPosts(currentPage, keyword); // 삭제된 글이면 목록 갱신
+      });
   };
 
   // 글 등록 (POST)
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title || !writer) {
-      alert("제목과 작성자를 입력해주세요!");
+    if (!title.trim() || !writer.trim() || !content.trim()) {   // ★ 교체
+      alert("제목, 작성자, 내용을 모두 입력해주세요!");
       return;
     }
 
@@ -55,6 +60,7 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, content, author: writer }),
     })
+      .then(checkResponse)                                      // ★ 추가
       .then(() => {
         setTitle("");
         setContent("");
@@ -62,7 +68,7 @@ function App() {
         setCurrentPage(1); // 글 등록 후 첫 페이지로 이동
         fetchPosts(1, keyword);
       })
-      .catch((error) => console.error("글 작성 실패:", error));
+      .catch((error) => alert(error.message));                  // ★ 교체
   };
 
   // 글 삭제 (DELETE)
@@ -71,11 +77,12 @@ function App() {
       fetch(`http://localhost:8080/api/posts/${id}`, {
         method: "DELETE",
       })
+        .then(checkResponse)                                    // ★ 추가
         .then(() => {
           setSelectedPost(null);
           fetchPosts(currentPage, keyword);
         })
-        .catch((error) => console.error("삭제 실패:", error));
+        .catch((error) => alert(error.message));                // ★ 교체
     }
   };
 
@@ -86,11 +93,13 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: editTitle, content: editContent }),
     })
-      .then(() => {
-        handleRowClick(id);
+      .then(checkResponse)                                      // ★ 추가
+      .then((response) => response.json())                      // ★ 추가
+      .then((updated) => {                                      // ★ 교체
+        setSelectedPost(updated); // 조회수 증가 없이 화면만 갱신
         fetchPosts(currentPage, keyword);
       })
-      .catch((error) => console.error("수정 실패:", error));
+      .catch((error) => alert(error.message));                  // ★ 교체
   };
 
   // 검색 실행 핸들러
@@ -118,7 +127,10 @@ function App() {
       {selectedPost ? (
         <PostDetail
           selectedPost={selectedPost}
-          onBack={() => setSelectedPost(null)}
+          onBack={() => {                                       // ★ 교체
+            setSelectedPost(null);
+            fetchPosts(currentPage, keyword); // 목록의 조회수를 최신으로
+          }}
           onDelete={handleDelete}
           onUpdate={handleUpdate}
         />

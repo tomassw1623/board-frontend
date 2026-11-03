@@ -56,6 +56,7 @@ function PostList({
             <th>제목</th>
             <th>작성자</th>
             <th>작성일</th>
+            <th>조회수</th>
           </tr>
         </thead>
         <tbody>
@@ -74,11 +75,12 @@ function PostList({
                     ? post.createdAt.replace("T", " ").substring(0, 19)
                     : ""}
                 </td>
+                <td>{post.views}</td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="4" style={{ textAlign: "center" }}>
+              <td colSpan="5" style={{ textAlign: "center" }}>
                 등록된 게시글이 없습니다.
               </td>
             </tr>
